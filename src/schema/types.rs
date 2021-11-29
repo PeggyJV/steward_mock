@@ -8,13 +8,13 @@ pub enum SchemaType {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Request {
+pub struct RequestBody {
     pub cellar_id: String,
     pub schema_type: SchemaType,
 }
 
 #[derive(Debug, Serialize)]
-pub struct Response<T> {
+pub struct ResponseBody<T> {
     pub cellar_id: String,
     pub check_frequency: u64,
     // see timestamp.rs
