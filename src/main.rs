@@ -1,3 +1,6 @@
-fn main() {
-    println!("Hello, world!");
+use steward::server::server;
+
+#[tokio::main]
+async fn main() {
+    server::serve().await;
 }

@@ -4,8 +4,8 @@ Steward is a Cellar data REST API mock. It is intended for testing operations in
 
 ## To Do
 [x] Response/Request types for UniswapV3 data
-[ ] Webserver
-    [ ] Implement `axum::response::IntoResponse` for steward's response body
+[x] Webserver
+[x] Basic handling & response
 [ ] Configurable endpoints
 [ ] Testing
 
