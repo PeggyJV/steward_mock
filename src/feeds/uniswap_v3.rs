@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::types::Generate;
+use crate::schema::types::{Mock, SchemaType};
 
 #[derive(Debug, Serialize)]
 pub struct UniswapV3Data {
@@ -10,13 +10,17 @@ pub struct UniswapV3Data {
     weight: u32,
 }
 
-impl Generate for UniswapV3Data {
-    fn generate() -> Self {
-        UniswapV3Data {
+impl Mock for UniswapV3Data {
+    fn generate_data() -> Vec<Self> {
+        vec![UniswapV3Data {
             token_id: 1,
             tick_upper: 100,
             tick_lower: 0,
             weight: 42,
-        }
+        }]
+    }
+
+    fn get_schema_type() -> SchemaType {
+        SchemaType::UniswapV3
     }
 }
