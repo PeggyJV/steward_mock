@@ -7,7 +7,7 @@ pub enum SchemaType {
     UniswapV3,
 }
 
-pub trait Mock {
+pub trait Mock: Serialize {
     fn generate_data() -> Vec<Self>
     where
         Self: Sized;
