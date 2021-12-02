@@ -6,11 +6,13 @@ Steward is a Cellar data REST API mock. It is intended for testing operations in
 [x] Response/Request type for UniswapV3 data
 [x] Webserver
 [x] Basic handling & response
-[ ] Handle request based on payload
+[x] Handle request based on payload (kind of)
+[x] Abscissa
 [ ] Configurable endpoints
 [ ] Testing
 [ ] Logging
 [ ] Auth middleware?
+[ ] Documentation
 
 ## Notes
 
