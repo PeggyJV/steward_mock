@@ -1,38 +1,20 @@
 //! Steward Abscissa Application
 
-use crate::{commands::StewardCmd, config::StewardConfig};
+use crate::{commands::EntryPoint, config::StewardConfig};
 use abscissa_core::{
     application::{self, AppCell},
-    config, trace, Application, EntryPoint, FrameworkError, StandardPaths,
+    config::{self, CfgCell},
+    trace, Application, FrameworkError, StandardPaths,
 };
 
 /// Application state
-pub static APPLICATION: AppCell<StewardApp> = AppCell::new();
-
-/// Obtain a read-only (multi-reader) lock on the application state.
-///
-/// Panics if the application state has not been initialized.
-pub fn app_reader() -> application::lock::Reader<StewardApp> {
-    APPLICATION.read()
-}
-
-/// Obtain an exclusive mutable lock on the application state.
-pub fn app_writer() -> application::lock::Writer<StewardApp> {
-    APPLICATION.write()
-}
-
-/// Obtain a read-only (multi-reader) lock on the application configuration.
-///
-/// Panics if the application configuration has not been loaded.
-pub fn app_config() -> config::Reader<StewardApp> {
-    config::Reader::new(&APPLICATION)
-}
+pub static APP: AppCell<StewardApp> = AppCell::new();
 
 /// Steward Application
 #[derive(Debug)]
 pub struct StewardApp {
     /// Application configuration.
-    config: Option<StewardConfig>,
+    config: CfgCell<StewardConfig>,
 
     /// Application state.
     state: application::State<Self>,
@@ -45,7 +27,7 @@ pub struct StewardApp {
 impl Default for StewardApp {
     fn default() -> Self {
         Self {
-            config: None,
+            config: CfgCell::default(),
             state: application::State::default(),
         }
     }
@@ -53,7 +35,7 @@ impl Default for StewardApp {
 
 impl Application for StewardApp {
     /// Entrypoint command for this application.
-    type Cmd = EntryPoint<StewardCmd>;
+    type Cmd = EntryPoint;
 
     /// Application configuration.
     type Cfg = StewardConfig;
@@ -62,18 +44,13 @@ impl Application for StewardApp {
     type Paths = StandardPaths;
 
     /// Accessor for application configuration.
-    fn config(&self) -> &StewardConfig {
-        self.config.as_ref().expect("config not loaded")
+    fn config(&self) -> config::Reader<StewardConfig> {
+        self.config.read()
     }
 
     /// Borrow the application state immutably.
     fn state(&self) -> &application::State<Self> {
         &self.state
-    }
-
-    /// Borrow the application state mutably.
-    fn state_mut(&mut self) -> &mut application::State<Self> {
-        &mut self.state
     }
 
     /// Register all components used by this application.
@@ -82,9 +59,10 @@ impl Application for StewardApp {
     /// beyond the default ones provided by the framework, this is the place
     /// to do so.
     fn register_components(&mut self, command: &Self::Cmd) -> Result<(), FrameworkError> {
-        let mut components = self.framework_components(command)?;
-        components.push(Box::new(abscissa_tokio::TokioComponent::new()?));
-        self.state.components.register(components)
+        let mut framework_components = self.framework_components(command)?;
+        let mut app_components = self.state.components_mut();
+        framework_components.push(Box::new(abscissa_tokio::TokioComponent::new()?));
+        app_components.register(framework_components)
     }
 
     /// Post-configuration lifecycle callback.
@@ -94,17 +72,27 @@ impl Application for StewardApp {
     /// possible.
     fn after_config(&mut self, config: Self::Cfg) -> Result<(), FrameworkError> {
         // Configure components
-        self.state.components.after_config(&config)?;
-        self.config = Some(config);
+        let mut components = self.state.components_mut();
+        components.after_config(&config)?;
+        self.config.set_once(config);
         Ok(())
     }
 
     /// Get tracing configuration from command-line options
-    fn tracing_config(&self, command: &EntryPoint<StewardCmd>) -> trace::Config {
+    fn tracing_config(&self, command: &EntryPoint) -> trace::Config {
         if command.verbose {
             trace::Config::verbose()
         } else {
-            trace::Config::default()
+            match std::env::var("RUST_LOG") {
+                Ok(val) => {
+                    if val != "" {
+                        val.into()
+                    } else {
+                        trace::Config::default()
+                    }
+                }
+                Err(_) => trace::Config::default(),
+            }
         }
     }
 }

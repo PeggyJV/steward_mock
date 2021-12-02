@@ -11,12 +11,11 @@
 //! application's configuration file.
 
 mod start;
-mod version;
 
-use self::{start::StartCmd, version::VersionCmd};
+use self::{start::StartCmd};
 use crate::config::StewardConfig;
 use abscissa_core::{
-    config::Override, Command, Configurable, FrameworkError, Help, Options, Runnable,
+    config::Override, Command, Configurable, FrameworkError, Clap, Runnable,
 };
 use std::path::PathBuf;
 
@@ -24,29 +23,46 @@ use std::path::PathBuf;
 pub const CONFIG_FILE: &str = "steward.toml";
 
 /// Steward Subcommands
-#[derive(Command, Debug, Options, Runnable)]
+#[derive(Command, Debug, Clap, Runnable)]
 pub enum StewardCmd {
-    /// The `help` subcommand
-    #[options(help = "get usage information")]
-    Help(Help<Self>),
-
     /// The `start` subcommand
-    #[options(help = "start the application")]
     Start(StartCmd),
+}
 
-    /// The `version` subcommand
-    #[options(help = "display version information")]
-    Version(VersionCmd),
+/// Entry point for the application. It needs to be a struct to allow using subcommands!
+#[derive(Command, Debug, Clap)]
+#[clap(author, about, version)]
+pub struct EntryPoint {
+    #[clap(subcommand)]
+    cmd: StewardCmd,
+
+    /// Enable verbose logging
+    #[clap(short, long)]
+    pub verbose: bool,
+
+    /// Use the specified config file
+    #[clap(short, long)]
+    pub config: Option<String>,
+}
+
+impl Runnable for EntryPoint {
+    fn run(&self) {
+        self.cmd.run()
+    }
 }
 
 /// This trait allows you to define how application configuration is loaded.
-impl Configurable<StewardConfig> for StewardCmd {
+impl Configurable<StewardConfig> for EntryPoint {
     /// Location of the configuration file
     fn config_path(&self) -> Option<PathBuf> {
         // Check if the config file exists, and if it does not, ignore it.
         // If you'd like for a missing configuration file to be a hard error
         // instead, always return `Some(CONFIG_FILE)` here.
-        let filename = PathBuf::from(CONFIG_FILE);
+        let filename = self
+        .config
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| CONFIG_FILE.into());
 
         if filename.exists() {
             Some(filename)
@@ -64,8 +80,7 @@ impl Configurable<StewardConfig> for StewardCmd {
         &self,
         config: StewardConfig,
     ) -> Result<StewardConfig, FrameworkError> {
-        match self {
-            StewardCmd::Start(cmd) => cmd.override_config(config),
+        match &self.cmd {
             _ => Ok(config),
         }
     }
